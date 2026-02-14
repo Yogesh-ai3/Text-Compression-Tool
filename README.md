@@ -33,7 +33,7 @@ Time Complexity:
 | Decoding           | O(n)       |
 
 Where:
-n = length of input text
+n = length of input text,
 k = number of unique characters
 
 Compression Analysis
