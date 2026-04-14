@@ -133,14 +133,14 @@ void printTree(Node *root, int level, char *prefix, int isLeft)
 
     if (root->right)
     {
-        snprintf(newPrefix, sizeof(newPrefix), "%s%s", prefix, isLeft ? "│   " : "    ");
+        snprintf(newPrefix, sizeof(newPrefix), "%s%s", prefix, isLeft ? "|   " : "    ");
         printTree(root->right, level + 1, newPrefix, 0);
     }
 
     printf("%s", prefix);
 
     if (level != 0)
-        printf(isLeft ? "└── " : "┌── ");
+        printf(isLeft ? "`-- " : "/-- ");
 
     if (!root->left && !root->right)
         printf("%c(%d)\n", root->ch, root->freq);
@@ -149,7 +149,7 @@ void printTree(Node *root, int level, char *prefix, int isLeft)
 
     if (root->left)
     {
-        snprintf(newPrefix, sizeof(newPrefix), "%s%s", prefix, isLeft ? "    " : "│   ");
+        snprintf(newPrefix, sizeof(newPrefix), "%s%s", prefix, isLeft ? "    " : "|   ");
         printTree(root->left, level + 1, newPrefix, 1);
     }
 }
