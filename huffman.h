@@ -21,5 +21,7 @@ Node *buildHuffmanTree(int freq[]);
 void generateCodes(Node *root, char *code, int depth, char codes[256][100]);
 void printTree(Node *root, int level, char *prefix, int isLeft);
 void freeTree(Node *root);
-
+void decodeHuffman(Node *root, char encoded[]);
+int getCompressedBits(char text[], char codes[256][100]);
+void decodeHuffman(Node *root, char encoded[]);
 #endif

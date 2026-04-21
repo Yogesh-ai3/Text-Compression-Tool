@@ -111,7 +111,16 @@ void generateCodes(Node *root, char *code, int depth, char codes[256][100])
 
     if (!root->left && !root->right)
     {
-        code[depth] = '\0';
+        if (depth == 0)
+        {
+            code[0] = '0';
+            code[1] = '\0';
+        }
+        else
+        {
+            code[depth] = '\0';
+        }
+
         printf("%c -> %s\n", root->ch, code);
         strcpy(codes[(unsigned char)root->ch], code);
         return;
@@ -153,7 +162,47 @@ void printTree(Node *root, int level, char *prefix, int isLeft)
         printTree(root->left, level + 1, newPrefix, 1);
     }
 }
+int getCompressedBits(char text[], char codes[256][100])
+{
+    int bits = 0;
 
+    for (int i = 0; text[i] != '\0'; i++)
+        bits += strlen(codes[(unsigned char)text[i]]);
+
+    return bits;
+}
+void decodeHuffman(Node *root, char encoded[])
+{
+    printf("\nHuffman Decoded:\n");
+
+    // Single character tree
+    if (!root->left && !root->right)
+    {
+        for (int i = 0; encoded[i] != '\0'; i++)
+            printf("%c", root->ch);
+
+        printf("\n");
+        return;
+    }
+
+    Node *curr = root;
+
+    for (int i = 0; encoded[i] != '\0'; i++)
+    {
+        if (encoded[i] == '0')
+            curr = curr->left;
+        else
+            curr = curr->right;
+
+        if (!curr->left && !curr->right)
+        {
+            printf("%c", curr->ch);
+            curr = root;
+        }
+    }
+
+    printf("\n");
+}
 void freeTree(Node *root)
 {
     if (!root)
