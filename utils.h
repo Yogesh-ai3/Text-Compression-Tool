@@ -1,11 +1,11 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#define MAX 256
+#include <stddef.h>
+#include "engine.h"
+#include "huffman.h"
 
-void calculateFrequency(char text[], int freq[]);
-void printFrequency(int freq[]);
-void encodeText(char text[], char codes[256][100], char encoded[]);
-void printStats(char text[], char codes[256][100]);
+EngineStatus encodeText(const char text[], const HuffmanCodeTable codes,
+                        char encoded[], size_t encodedCapacity);
 
 #endif

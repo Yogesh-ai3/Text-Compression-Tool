@@ -1,40 +1,29 @@
-#include <stdio.h>
 #include <string.h>
 #include "utils.h"
-#include "huffman.h"
 
-void calculateFrequency(char text[], int freq[])
+EngineStatus encodeText(const char text[], const HuffmanCodeTable codes,
+                        char encoded[], size_t encodedCapacity)
 {
-    for (int i = 0; text[i] != '\0'; i++)
-        freq[(unsigned char)text[i]]++;
-}
+    size_t encodedLength = 0;
 
-void printFrequency(int freq[])
-{
-    printf("\nCharacter Frequencies:\n");
-    for (int i = 0; i < MAX; i++)
-    {
-        if (freq[i] > 0)
-            printf("%c -> %d\n", i, freq[i]);
-    }
-}
+    if (text == NULL || codes == NULL || encoded == NULL || encodedCapacity == 0)
+        return ENGINE_INVALID_ARGUMENT;
 
-void encodeText(char text[], char codes[256][100], char encoded[])
-{
     encoded[0] = '\0';
 
     for (int i = 0; text[i] != '\0'; i++)
-        strcat(encoded, codes[(unsigned char)text[i]]);
+    {
+        const char *code = codes[(unsigned char)text[i]];
+        size_t codeLength = strlen(code);
 
-    printf("\nEncoded String:\n%s\n", encoded);
-}
+        if (codeLength == 0)
+            return ENGINE_MALFORMED_INPUT;
+        if (codeLength >= encodedCapacity - encodedLength)
+            return ENGINE_OUTPUT_TOO_SMALL;
 
-void printStats(char text[], char codes[256][100])
-{
-    int original_bits = strlen(text) * 8;
-    int compressed_bits = getCompressedBits(text, codes);
-    printf("\nOriginal bits: %d\n", original_bits);
-    printf("Compressed bits: %d\n", compressed_bits);
-    printf("Compression ratio: %.2f\n",
-           (float)compressed_bits / original_bits);
+        memcpy(encoded + encodedLength, code, codeLength + 1);
+        encodedLength += codeLength;
+    }
+
+    return ENGINE_OK;
 }

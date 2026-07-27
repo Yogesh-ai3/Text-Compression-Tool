@@ -1,29 +1,36 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "huffman.h"
 
-Node *createNode(char ch, int freq)
+typedef struct
+{
+    Node *arr[ASE_SYMBOL_COUNT];
+    size_t size;
+} MinHeap;
+
+static Node *createNode(char ch, int freq)
 {
     Node *node = (Node *)malloc(sizeof(Node));
+    if (node == NULL)
+        return NULL;
     node->ch = ch;
     node->freq = freq;
     node->left = node->right = NULL;
     return node;
 }
 
-void swap(Node **a, Node **b)
+static void swap(Node **a, Node **b)
 {
     Node *temp = *a;
     *a = *b;
     *b = temp;
 }
 
-void heapifyUp(MinHeap *heap, int index)
+static void heapifyUp(MinHeap *heap, size_t index)
 {
     while (index > 0)
     {
-        int parent = (index - 1) / 2;
+        size_t parent = (index - 1) / 2;
 
         if (heap->arr[parent]->freq <= heap->arr[index]->freq)
             break;
@@ -33,14 +40,14 @@ void heapifyUp(MinHeap *heap, int index)
     }
 }
 
-void heapifyDown(MinHeap *heap, int index)
+static void heapifyDown(MinHeap *heap, size_t index)
 {
-    int smallest = index;
+    size_t smallest = index;
 
     while (1)
     {
-        int left = 2 * index + 1;
-        int right = 2 * index + 2;
+        size_t left = 2 * index + 1;
+        size_t right = 2 * index + 2;
 
         if (left < heap->size &&
             heap->arr[left]->freq < heap->arr[smallest]->freq)
@@ -57,14 +64,14 @@ void heapifyDown(MinHeap *heap, int index)
         index = smallest;
     }
 }
-void insertHeap(MinHeap *heap, Node *node)
+static void insertHeap(MinHeap *heap, Node *node)
 {
     heap->arr[heap->size] = node;
     heapifyUp(heap, heap->size);
     heap->size++;
 }
 
-Node *extractMin(MinHeap *heap)
+static Node *extractMin(MinHeap *heap)
 {
     if (heap->size == 0)
         return NULL;
@@ -78,15 +85,30 @@ Node *extractMin(MinHeap *heap)
     return min;
 }
 
-Node *buildHuffmanTree(int freq[])
+Node *buildHuffmanTree(const int freq[], EngineStatus *status)
 {
     MinHeap heap;
     heap.size = 0;
 
-    for (int i = 0; i < MAX; i++)
+    if (freq == NULL || status == NULL)
+        return NULL;
+
+    *status = ENGINE_OK;
+
+    for (size_t i = 0; i < ASE_SYMBOL_COUNT; i++)
     {
         if (freq[i] > 0)
-            insertHeap(&heap, createNode(i, freq[i]));
+        {
+            Node *node = createNode((char)i, freq[i]);
+            if (node == NULL)
+            {
+                while (heap.size > 0)
+                    freeTree(extractMin(&heap));
+                *status = ENGINE_ALLOCATION_FAILED;
+                return NULL;
+            }
+            insertHeap(&heap, node);
+        }
     }
 
     while (heap.size > 1)
@@ -95,6 +117,15 @@ Node *buildHuffmanTree(int freq[])
         Node *right = extractMin(&heap);
 
         Node *newNode = createNode('$', left->freq + right->freq);
+        if (newNode == NULL)
+        {
+            freeTree(left);
+            freeTree(right);
+            while (heap.size > 0)
+                freeTree(extractMin(&heap));
+            *status = ENGINE_ALLOCATION_FAILED;
+            return NULL;
+        }
         newNode->left = left;
         newNode->right = right;
 
@@ -104,10 +135,11 @@ Node *buildHuffmanTree(int freq[])
     return extractMin(&heap);
 }
 
-void generateCodes(Node *root, char *code, int depth, char codes[256][100])
+static EngineStatus generateCodesRecursive(const Node *root, char code[], size_t depth,
+                                           HuffmanCodeTable codes)
 {
     if (!root)
-        return;
+        return ENGINE_OK;
 
     if (!root->left && !root->right)
     {
@@ -121,87 +153,97 @@ void generateCodes(Node *root, char *code, int depth, char codes[256][100])
             code[depth] = '\0';
         }
 
-        printf("%c -> %s\n", root->ch, code);
         strcpy(codes[(unsigned char)root->ch], code);
-        return;
+        return ENGINE_OK;
     }
+
+    if (depth + 1 >= ASE_HUFFMAN_CODE_CAPACITY)
+        return ENGINE_MALFORMED_INPUT;
 
     code[depth] = '0';
-    generateCodes(root->left, code, depth + 1, codes);
+    EngineStatus status = generateCodesRecursive(root->left, code, depth + 1, codes);
+    if (status != ENGINE_OK)
+        return status;
 
     code[depth] = '1';
-    generateCodes(root->right, code, depth + 1, codes);
+    return generateCodesRecursive(root->right, code, depth + 1, codes);
 }
 
-void printTree(Node *root, int level, char *prefix, int isLeft)
+EngineStatus generateCodes(const Node *root, HuffmanCodeTable codes)
 {
-    if (!root)
-        return;
+    char code[ASE_HUFFMAN_CODE_CAPACITY];
 
-    char newPrefix[1000];
+    if (root == NULL || codes == NULL)
+        return ENGINE_INVALID_ARGUMENT;
+    memset(codes, 0, sizeof(HuffmanCodeTable));
+    return generateCodesRecursive(root, code, 0, codes);
+}
 
-    if (root->right)
+EngineStatus getCompressedBits(const char text[], const HuffmanCodeTable codes, size_t *bits)
+{
+    if (text == NULL || codes == NULL || bits == NULL)
+        return ENGINE_INVALID_ARGUMENT;
+
+    *bits = 0;
+
+    for (size_t i = 0; text[i] != '\0'; i++)
     {
-        snprintf(newPrefix, sizeof(newPrefix), "%s%s", prefix, isLeft ? "|   " : "    ");
-        printTree(root->right, level + 1, newPrefix, 0);
+        size_t codeLength = strlen(codes[(unsigned char)text[i]]);
+        if (codeLength == 0)
+            return ENGINE_MALFORMED_INPUT;
+        *bits += codeLength;
     }
 
-    printf("%s", prefix);
-
-    if (level != 0)
-        printf(isLeft ? "`-- " : "/-- ");
-
-    if (!root->left && !root->right)
-        printf("%c(%d)\n", root->ch, root->freq);
-    else
-        printf("INT(%d)\n", root->freq);
-
-    if (root->left)
-    {
-        snprintf(newPrefix, sizeof(newPrefix), "%s%s", prefix, isLeft ? "    " : "|   ");
-        printTree(root->left, level + 1, newPrefix, 1);
-    }
+    return ENGINE_OK;
 }
-int getCompressedBits(char text[], char codes[256][100])
+EngineStatus decodeHuffman(const Node *root, const char encoded[], char decoded[], size_t decodedCapacity)
 {
-    int bits = 0;
+    size_t decodedIndex = 0;
 
-    for (int i = 0; text[i] != '\0'; i++)
-        bits += strlen(codes[(unsigned char)text[i]]);
-
-    return bits;
-}
-void decodeHuffman(Node *root, char encoded[])
-{
-    printf("\nHuffman Decoded:\n");
+    if (root == NULL || encoded == NULL || decoded == NULL || decodedCapacity == 0)
+        return ENGINE_INVALID_ARGUMENT;
 
     // Single character tree
     if (!root->left && !root->right)
     {
         for (int i = 0; encoded[i] != '\0'; i++)
-            printf("%c", root->ch);
+        {
+            if (encoded[i] != '0' || decodedIndex + 1 >= decodedCapacity)
+                return encoded[i] != '0' ? ENGINE_MALFORMED_INPUT : ENGINE_OUTPUT_TOO_SMALL;
+            decoded[decodedIndex++] = root->ch;
+        }
 
-        printf("\n");
-        return;
+        decoded[decodedIndex] = '\0';
+        return ENGINE_OK;
     }
 
-    Node *curr = root;
+    const Node *curr = root;
 
     for (int i = 0; encoded[i] != '\0'; i++)
     {
         if (encoded[i] == '0')
             curr = curr->left;
-        else
+        else if (encoded[i] == '1')
             curr = curr->right;
+        else
+            return ENGINE_MALFORMED_INPUT;
+
+        if (curr == NULL)
+            return ENGINE_MALFORMED_INPUT;
 
         if (!curr->left && !curr->right)
         {
-            printf("%c", curr->ch);
+            if (decodedIndex + 1 >= decodedCapacity)
+                return ENGINE_OUTPUT_TOO_SMALL;
+            decoded[decodedIndex++] = curr->ch;
             curr = root;
         }
     }
 
-    printf("\n");
+    if (curr != root)
+        return ENGINE_MALFORMED_INPUT;
+    decoded[decodedIndex] = '\0';
+    return ENGINE_OK;
 }
 void freeTree(Node *root)
 {

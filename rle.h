@@ -1,8 +1,11 @@
 #ifndef RLE_H
 #define RLE_H
 
-void rleEncode(char text[], char output[]);
-void rleDecode(char encoded[], char output[]);
-int rleBits(char encoded[]);
+#include <stddef.h>
+#include "engine.h"
+
+EngineStatus rleEncode(const char text[], char output[], size_t outputCapacity);
+EngineStatus rleDecode(const char encoded[], char output[], size_t outputCapacity);
+size_t rleBits(const char encoded[]);
 
 #endif

@@ -1,7 +1,11 @@
 #ifndef HUFFMAN_H
 #define HUFFMAN_H
 
-#define MAX 256
+#include <stddef.h>
+#include "engine.h"
+
+#define MAX ASE_SYMBOL_COUNT
+typedef char HuffmanCodeTable[ASE_SYMBOL_COUNT][ASE_HUFFMAN_CODE_CAPACITY];
 
 typedef struct Node
 {
@@ -10,18 +14,9 @@ typedef struct Node
     struct Node *left, *right;
 } Node;
 
-typedef struct
-{
-    Node *arr[MAX];
-    int size;
-} MinHeap;
-
-// Core functions
-Node *buildHuffmanTree(int freq[]);
-void generateCodes(Node *root, char *code, int depth, char codes[256][100]);
-void printTree(Node *root, int level, char *prefix, int isLeft);
+Node *buildHuffmanTree(const int freq[], EngineStatus *status);
+EngineStatus generateCodes(const Node *root, HuffmanCodeTable codes);
 void freeTree(Node *root);
-void decodeHuffman(Node *root, char encoded[]);
-int getCompressedBits(char text[], char codes[256][100]);
-void decodeHuffman(Node *root, char encoded[]);
+EngineStatus decodeHuffman(const Node *root, const char encoded[], char decoded[], size_t decodedCapacity);
+EngineStatus getCompressedBits(const char text[], const HuffmanCodeTable codes, size_t *bits);
 #endif
